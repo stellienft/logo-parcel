@@ -1,5 +1,7 @@
 # Logo Parcel
 
+<img src="resources/AppIcon.png" alt="Logo Parcel app icon" width="160">
+
 **A straightforward logo handoff tool for Mac.**
 
 Created by [Stellio Creative Labs](https://stellio.com.au) · [GitHub / @stellienft](https://github.com/stellienft)
@@ -70,7 +72,7 @@ Send the ZIP. After extracting it, the client opens **START-HERE.html** to brows
 
 CMYK conversion uses VectorCraft's colour settings. Printed appearance depends on the output profile, paper and printer. Automatic monochrome recolouring also recolours white filled shapes; use real cutout paths or approved monochrome artwork where needed. Check font substitutions, images and complex effects in the previews and export notes.
 
-The current version has no custom filename templates, saved presets, live connection to an unsaved editor document, Pantone workflow or print-profile picker. It is not a complete replica of Logo Package Express.
+The current version has no custom filename templates, saved presets, live connection to an unsaved editor document, Pantone workflow or print-profile picker.
 
 ## Build locally (development)
 
@@ -98,7 +100,7 @@ Do not commit the generated app, engine binary, test output, customer logos, cer
 
 ## Credits and licensing
 
-Original app and guide by Stellio Creative Labs. Export rendering uses [VectorCraft](https://github.com/storytold/vectorcraft), with its supplied MIT/Apache and third-party notices preserved in distributed engine packages. Logo Parcel is independent of ArtCraft and Logo Package Express.
+Original app and guide by Stellio Creative Labs. Export rendering uses [VectorCraft](https://github.com/storytold/vectorcraft), with its supplied MIT/Apache and third-party notices preserved in distributed engine packages. Logo Parcel is independent of ArtCraft.
 
 Logo Parcel's original source is available under the [MIT License](LICENSE), copyright © 2026 Stellio Creative Labs. VectorCraft and other dependencies retain their own licences and notices.
 
