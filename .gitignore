@@ -1,0 +1,12 @@
+.DS_Store
+dist/
+build/
+__pycache__/
+*.pyc
+*.app/
+*.dmg
+*.zip
+*.p12
+*.mobileprovision
+.env
+.env.*
