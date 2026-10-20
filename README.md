@@ -8,6 +8,18 @@ Logo Parcel takes your approved logo artwork and packages the versions your clie
 
 **Status: development preview, version 0.4.0.** The source is public and open-source. A ready-to-install public download has not been published. The current build targets Apple silicon and uses `/usr/bin/python3`; a self-contained, signed and notarised public build is still required.
 
+## Screenshots
+
+A look at the four-step workflow in version 0.4.0, using fictional example artwork.
+
+| Add your artwork | Choose export options |
+| --- | --- |
+| ![Add artwork](screenshots/01-artwork.png) | ![Export options](screenshots/02-export-options.png) |
+| **Review the actual files** | **Name and save your package** |
+| ![Review exports](screenshots/03-preview.png) | ![Name and save](screenshots/04-save.png) |
+
+[View the full-size screenshot gallery](screenshots/README.md).
+
 ## What it does
 
 - Start with a full logo; optionally add a symbol and wordmark.
