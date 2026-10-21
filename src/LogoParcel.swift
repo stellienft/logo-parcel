@@ -25,11 +25,29 @@ struct EngineError: Decodable {var error:String}
 
 final class Model: ObservableObject {
  @Published var step=0
+ @Published var baseRoles=roles
  @Published var extraRoles:[String]=[]
+ @Published var stars:Int?=nil
+ var primaryRole:String {baseRoles[0]}
+ var canContinueArtwork:Bool {artwork[primaryRole] != nil}
+ struct RepositoryStats:Decodable {let stargazers_count:Int}
+ static func starCount(_ data:Data,status:Int)->Int? {
+  guard status==200,let stats=try? JSONDecoder().decode(RepositoryStats.self,from:data),stats.stargazers_count>=0 else{return nil}
+  return stats.stargazers_count
+ }
+ @MainActor func refreshStars() async {
+  var request=URLRequest(url:URL(string:"https://api.github.com/repos/stellienft/logo-parcel")!)
+  request.timeoutInterval=8
+  request.setValue("application/vnd.github+json",forHTTPHeaderField:"Accept")
+  request.setValue("LogoParcel",forHTTPHeaderField:"User-Agent")
+  let session=URLSession(configuration:.ephemeral)
+  defer {session.invalidateAndCancel()}
+  do {let (data,response)=try await session.data(for:request);stars=Self.starCount(data,status:(response as? HTTPURLResponse)?.statusCode ?? 0)} catch {stars=nil}
+ }
  @Published var showRoleEditor=false
  @Published var editingRole:String?=nil
  @Published var roleDraft=""
- var allRoles:[String] {roles+extraRoles}
+ var allRoles:[String] {baseRoles+extraRoles}
  var cleanRole:String {roleDraft.trimmingCharacters(in:.whitespacesAndNewlines)}
  func roleKey(_ value:String)->String {value.replacingOccurrences(of:"[^a-zA-Z0-9_-]+",with:"-",options:.regularExpression).trimmingCharacters(in:CharacterSet(charactersIn:"-")).lowercased()}
  var roleError:String? {
@@ -42,13 +60,16 @@ final class Model: ObservableObject {
  func editRole(_ role:String?=nil){editingRole=role;roleDraft=role ?? "";showRoleEditor=true}
  func saveRole(){
    guard roleError==nil else{return}
-   if let old=editingRole,let i=extraRoles.firstIndex(of:old) {
-     extraRoles[i]=cleanRole
+   if let old=editingRole {
+     if let i=baseRoles.firstIndex(of:old) {baseRoles[i]=cleanRole}
+     else if let i=extraRoles.firstIndex(of:old) {extraRoles[i]=cleanRole}
+     else {return}
      if let image=artwork.removeValue(forKey:old){artwork[cleanRole]=image}
    } else {extraRoles.append(cleanRole)}
+   files=[];included=[];prepared="";roleFilter="All artwork"
    showRoleEditor=false
  }
- func removeRole(_ role:String){extraRoles.removeAll{$0==role};artwork.removeValue(forKey:role)}
+ func removeRole(_ role:String){guard extraRoles.contains(role) else{return};extraRoles.removeAll{$0==role};artwork.removeValue(forKey:role)}
  @Published var artwork:[String:Artwork]=[:]
  @Published var formats:Set<String>=["svg","png","pdf","ai","eps","jpg"]
  @Published var intent="both"
@@ -103,7 +124,7 @@ final class Model: ObservableObject {
    }
    DispatchQueue.global(qos:.userInitiated).async {
      do {
-       let p=Process();p.executableURL=URL(fileURLWithPath:"/usr/bin/python3");p.arguments=[self.resources.appendingPathComponent("packager.py").path,cmd,configURL.path]
+       let p=Process();p.executableURL=self.resources.appendingPathComponent("python/bin/python3");p.arguments=["-E","-s","-B",self.resources.appendingPathComponent("packager.py").path,cmd,configURL.path]
        let stdout=Pipe();p.standardOutput=stdout
        let errURL=job.appendingPathComponent("engine.log");FileManager.default.createFile(atPath:errURL.path,contents:nil)
        let err=try FileHandle(forWritingTo:errURL);defer {try? err.close()};p.standardError=err
@@ -134,7 +155,7 @@ final class Model: ObservableObject {
  }
  func chooseOutput(){let p=NSOpenPanel();p.title="Where should your logo package be saved?";p.prompt="Save here";p.canChooseFiles=false;p.canChooseDirectories=true;p.canCreateDirectories=true;if p.runModal()==NSApplication.ModalResponse.OK,let url=p.url{output=url.path}}
  func export(){perform("deliver",config:["prepared":prepared,"include":Array(included),"brand":brand.trimmingCharacters(in:.whitespacesAndNewlines),"output":output],message:"Saving your package…"){(result:Delivered) in self.delivered=result;self.step=4}}
- func startAgain(){extraRoles=[];artwork=[:];files=[];included=[];prepared="";delivered=nil;brand="";output="";importWarnings=[];warnings=[];step=0}
+ func startAgain(){baseRoles=roles;extraRoles=[];artwork=[:];files=[];included=[];prepared="";delivered=nil;brand="";output="";importWarnings=[];warnings=[];step=0}
 }
 
 struct CraftButton:ButtonStyle {
@@ -180,6 +201,7 @@ struct Content:View {
   .alert("Let’s fix that",isPresented:Binding(get:{m.error != nil},set:{if !$0{m.error=nil}})){Button("OK",role:.cancel){m.error=nil}}message:{Text(m.error ?? "")}
   .sheet(isPresented:Binding(get:{m.pending != nil},set:{if !$0{m.pending=nil}})){boardPicker}
   .sheet(isPresented:$m.showRoleEditor){roleEditor}
+  .task {await m.refreshStars()}
   .sheet(item:$m.enlarged){file in VStack(alignment:.leading,spacing:16){HStack{Text("\(file.role) · \(file.title)").font(.title2);Spacer();Button("Done"){m.enlarged=nil}};ArtImage(path:file.thumbnail,dark:file.variant=="white").frame(height:440);Text("\(file.format.uppercased()) · \(file.detail)").foregroundColor(.secondary);Text("Screen preview. CMYK colours can look different in print.").font(.system(size:11,design:.monospaced)).foregroundColor(.secondary)}.padding(25).frame(width:700)}
  }
  var creatorCredit:some View {
@@ -198,7 +220,10 @@ struct Content:View {
     Rectangle().fill(rule).frame(width:1,height:30)
     Text("LOGO PACKAGING").font(.system(size:10,weight:.semibold,design:.monospaced)).tracking(2).foregroundColor(.secondary)
     Spacer()
-    Text("VECTORCRAFT COMPANION").font(.system(size:10,design:.monospaced)).tracking(1.5).foregroundColor(.secondary)
+    Link(destination:URL(string:"https://github.com/stellienft/logo-parcel")!){
+     HStack(spacing:7){Text("GITHUB");Image(systemName:"star");Text(m.stars.map{String($0)} ?? "—")}
+      .font(.system(size:11,weight:.semibold,design:.monospaced)).foregroundColor(ink)
+    }.help(m.stars == nil ? "Open Logo Parcel on GitHub. Star count unavailable offline or when GitHub is busy." : "GitHub stars, checked when this window opens. Click to visit the repository.")
    }.padding(.horizontal,30).padding(.vertical,22)
    Rectangle().fill(rule).frame(height:1)
    HStack(spacing:0){
@@ -225,7 +250,7 @@ struct Content:View {
  }
  func artworkCard(_ role:String)->some View {
   VStack(alignment:.leading,spacing:13){
-   HStack{Text(String(format:"%02d",(m.allRoles.firstIndex(of:role) ?? 0)+1)).font(.system(size:10,weight:.bold,design:.monospaced)).tracking(1).padding(.horizontal,7).padding(.vertical,5).background(accent);Spacer();Text(role=="Full logo" ? "REQUIRED" : "OPTIONAL").font(.system(size:10,design:.monospaced)).tracking(1.5).foregroundColor(.secondary)}
+   HStack{Text(String(format:"%02d",(m.allRoles.firstIndex(of:role) ?? 0)+1)).font(.system(size:10,weight:.bold,design:.monospaced)).tracking(1).padding(.horizontal,7).padding(.vertical,5).background(accent);Spacer();Text(role==m.primaryRole ? "REQUIRED" : "OPTIONAL").font(.system(size:10,design:.monospaced)).tracking(1.5).foregroundColor(.secondary)}
    Divider()
    Text(role).font(.system(size:22,weight:.bold)).tracking(-0.5).lineLimit(2).frame(minHeight:28,alignment:.leading)
    if let a=m.artwork[role] {
@@ -234,14 +259,12 @@ struct Content:View {
     Text(a.boardName).font(.system(size:11,design:.monospaced)).foregroundColor(.secondary).lineLimit(1)
     HStack{Button("Replace…"){m.add(role)};Spacer();Button("Remove"){m.artwork.removeValue(forKey:role)}.foregroundColor(.secondary)}
    } else {
-    VStack(spacing:12){Image(systemName:role=="Symbol" ? "sparkle" : role=="Wordmark" ? "textformat" : "square.on.square").font(.system(size:30)).foregroundColor(accent.opacity(0.6));Text(role=="Full logo" ? "Your complete logo" : role=="Symbol" ? "Your standalone icon" : role=="Wordmark" ? "Your brand name" : "Your approved variation").foregroundColor(.secondary)}.frame(maxWidth:.infinity).frame(height:155).background(Color.black.opacity(0.025),in:Rectangle())
-    Text(role=="Full logo" ? "Needed to start your package" : "Leave empty if you don’t have one").font(.system(size:11,design:.monospaced)).foregroundColor(.secondary).frame(height:30,alignment:.top)
-    Button(roles.contains(role) ? "Add \(role.lowercased())…" : "Choose artwork…"){m.add(role)}.buttonStyle(CraftButton()).frame(maxWidth:.infinity,alignment:.leading)
+    VStack(spacing:12){Image(systemName:role==m.baseRoles[1] ? "sparkle" : role==m.baseRoles[2] ? "textformat" : "square.on.square").font(.system(size:30)).foregroundColor(accent.opacity(0.6));Text(role==m.primaryRole ? "Your complete logo" : role==m.baseRoles[1] ? "Your standalone icon" : role==m.baseRoles[2] ? "Your brand name" : "Your approved variation").foregroundColor(.secondary)}.frame(maxWidth:.infinity).frame(height:155).background(Color.black.opacity(0.025),in:Rectangle())
+    Text(role==m.primaryRole ? "Needed to start your package" : "Leave empty if you don’t have one").font(.system(size:11,design:.monospaced)).foregroundColor(.secondary).frame(height:30,alignment:.top)
+    Button(m.baseRoles.contains(role) ? "Add \(role.lowercased())…" : "Choose artwork…"){m.add(role)}.buttonStyle(CraftButton()).frame(maxWidth:.infinity,alignment:.leading)
    }
-   if m.extraRoles.contains(role) {
-    Divider()
-    HStack {Button("Rename"){m.editRole(role)};Spacer();Button("Remove item"){m.removeRole(role)}}
-   }
+   Divider()
+   HStack {Button("Rename"){m.editRole(role)}.accessibilityLabel("Rename \(role)");Spacer();if m.extraRoles.contains(role){Button("Remove item"){m.removeRole(role)}}}
   }.padding(18).frame(maxWidth:.infinity,alignment:.topLeading).craftPanel()
  }
  var optionsPage:some View {
@@ -304,9 +327,9 @@ struct Content:View {
   }.frame(maxWidth:.infinity).padding(.vertical,80)
  }
  var footer:some View {
-  HStack(spacing:15){if m.step>0 && m.step<4 {Button("Back"){m.step-=1}};Text(m.step==0 ? "Everything stays on your Mac." : m.step==1 ? "\(m.count) files · \(m.sizes.sorted().map{String($0)}.joined(separator:", ")) px · \(m.padding)% clear space" : m.step==2 ? "\(m.included.count) files selected" : "").font(.system(size:11,design:.monospaced)).foregroundColor(.secondary);Spacer()
+  HStack(spacing:15){if m.step>0 && m.step<4 {Button("Back"){m.step-=1}};Text(m.step==0 ? "Your artwork stays on your Mac." : m.step==1 ? "\(m.count) files · \(m.sizes.sorted().map{String($0)}.joined(separator:", ")) px · \(m.padding)% clear space" : m.step==2 ? "\(m.included.count) files selected" : "").font(.system(size:11,design:.monospaced)).foregroundColor(.secondary);Spacer()
    switch m.step {
-   case 0:Button("Continue to options"){m.step=1}.buttonStyle(CraftButton(primary:true)).disabled(m.artwork["Full logo"]==nil)
+   case 0:Button("Continue to options"){m.step=1}.buttonStyle(CraftButton(primary:true)).disabled(!m.canContinueArtwork)
    case 1:Button("Build visual preview",action:m.buildPreview).buttonStyle(CraftButton(primary:true)).disabled(!m.canPreview)
    case 2:Button("Continue to save"){m.step=3}.buttonStyle(CraftButton(primary:true)).disabled(m.included.isEmpty)
    case 3:Button("Export \(m.included.count) files",action:m.export).buttonStyle(CraftButton(primary:true)).disabled(!m.validName || m.output.isEmpty || m.included.isEmpty)
