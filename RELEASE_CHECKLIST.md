@@ -6,8 +6,9 @@ Repository: [stellienft/logo-parcel](https://github.com/stellienft/logo-parcel) 
 
 - [x] License the original source under MIT and add LICENSE.
 - [ ] Finalise the production bundle identifier under the organisation's control.
-- [ ] Bundle a supported Python runtime and its notices; update Swift to use it. Verify no developer tools are required on a fresh Mac.
-- [ ] Build and test Apple-silicon support. Either build/test Intel separately or ship a tested universal build; state the supported platforms clearly.
+- [x] Bundle standalone Python 3.13.16 and its licence notices; launch it directly from Swift. Relocated-bundle testing passed with an isolated environment.
+- [ ] Verify installation on a fresh Mac without developer tools.
+- [x] Build and smoke-test Apple silicon; label the beta Apple silicon only. Intel remains unsupported.
 - [ ] Confirm the actual minimum supported macOS version on a clean installation.
 - [ ] Finalise the app icon, version/build numbers and About information.
 - [ ] Exercise real logo files: text, fonts, masks, gradients, images, effects, many artboards and CMYK exports. Inspect exported formats in independent viewers.
