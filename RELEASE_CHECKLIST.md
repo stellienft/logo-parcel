@@ -13,6 +13,9 @@ Repository: [stellienft/logo-parcel](https://github.com/stellienft/logo-parcel) 
 - [ ] Finalise the app icon, version/build numbers and About information.
 - [ ] Exercise real logo files: text, fonts, masks, gradients, images, effects, many artboards and CMYK exports. Inspect exported formats in independent viewers.
 - [ ] Check readable error handling, cancellation/large jobs, temporary-cache cleanup and destination disk failures.
+- [ ] Smoke-test the 0.6 features on a Mac: drag and drop onto cards, presets, reopening recent packages (including moved artwork), print-profile picker with an installed and a chosen `.icc` file, web and social sets, filename patterns, Pantone fields, the PDF brand sheet and the update badge.
+- [ ] Open a delivered `favicon.ico`, `.ase` swatch file and brand sheet PDF in Finder/Preview, Adobe apps and a browser.
+- [ ] Run `python3 -m unittest discover tests` before each release build.
 - [ ] Retain VectorCraft and runtime licences/notices; pin dependency versions and verify downloaded packages.
 - [ ] Sign all bundled executable components appropriately, then sign the app with a Developer ID Application identity and hardened runtime.
 - [ ] Create a ZIP or DMG; submit it to Apple's notarisation service; staple and validate the result as applicable.

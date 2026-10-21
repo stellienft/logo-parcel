@@ -41,10 +41,18 @@ A look at the four-step workflow in version 0.4.0, using fictional example artwo
 - Choose SVG, PNG, JPG, PDF, EPS and PDF-compatible AI exports.
 - Choose digital (RGB), print (CMYK) or both.
 - Generate full-colour, black, white, grayscale, inverted and custom solid versions.
+- Add ready-made web and social sets: favicons (`favicon.ico`, 16 and 32 px, Apple touch icon, Android 192 and 512 px), a profile avatar, LinkedIn, X, Facebook and YouTube covers, and an email signature image.
+- Choose the printer's CMYK profile (an installed ICC profile or any `.icc` file) instead of the generic profile.
+- Get plain-language checks before you deliver: live text, small or linked images, very light artwork, and wide artwork used for favicons.
 - Review visual previews and select the exact files to deliver.
+- Set your own filename pattern, such as `{brand}_{item}_{colour}_{mode}_{size}`.
 - Save an organised folder and ZIP, with a branded, offline HTML logo library.
+- Give clients their brand colours (HEX, RGB, CMYK and optional Pantone references) with ASE, CSS and JSON swatch files.
+- Include usage guidelines (clear space, minimum sizes, and visual do's and don'ts) and a one-page PDF brand sheet.
+- Save export settings as named presets, and reopen recent packages to update them after a logo change.
+- Drag artwork files straight onto the artwork cards.
 - Keep original artwork unchanged. All artwork processing takes place locally.
-- See the repository’s GitHub star count in the header. It updates when the app window opens and links to the project. An unavailable count displays a dash.
+- See the repository’s GitHub star count in the header, and an **Update** badge when a newer release is published. Both update when the app window opens. An unavailable count displays a dash.
 
 ## How to use it
 
@@ -54,27 +62,32 @@ Save your logo from VectorCraft first. SVG or `.vectorcraft` are good starting p
 
 ### 2. Add your artwork
 
-Click **Add full logo**. Add a symbol or wordmark if needed. Use the **pencil icon** beside any card title to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails.
+Click **Add full logo**, or drag a file onto the card. Add a symbol or wordmark if needed. Use the **pencil icon** beside any card title to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails. To update an earlier package, choose **Reopen** under **Recent packages**; artwork that has moved is listed so you can choose it again.
 
 ### 3. Choose your exports
 
-Choose **Digital only**, **Print only** or **Both**. Select file formats and colour versions. Open **More options** for raster widths, clear space and other settings. Incompatible format/mode combinations are excluded automatically.
+Choose **Digital only**, **Print only** or **Both**. Select file formats, colour versions and any **web and social sets**. Open **More options** for raster widths, clear space, the **print profile** and other settings. Incompatible format/mode combinations are excluded automatically.
+
+Use **Save as preset…** to keep these choices, including the print profile and filename pattern, then **Apply a preset** on the next job.
 
 ### 4. Review the actual files
 
-Click **Build visual preview**. Enlarge a preview to inspect it, filter the grid and uncheck files you do not want. White artwork is displayed against a dark tile so you can see it.
+Click **Build visual preview**. Enlarge a preview to inspect it, filter the grid and uncheck files you do not want. White artwork is displayed against a dark tile so you can see it. **Check before you deliver** lists anything worth fixing in the artwork first; these notes are kept in `export-report.json`, not shown to your client.
 
 ### 5. Name and save
 
 Choose a package name and save folder, then click **Export**. Existing packages are kept with numbered filenames. The files delivered are the exact bytes reviewed in the preview.
 
+- **File names**: edit the pattern using `{brand}`, `{item}`, `{colour}`, `{mode}`, `{size}` and `{format}`. An example updates as you type. Favicons keep their standard web names.
+- **Client guide**: choose whether to include brand colours (add Pantone references if you have them), usage guidelines with minimum sizes and your own notes, and the PDF brand sheet.
+
 ### 6. Hand the package to your client
 
-Send the ZIP. After extracting it, the client opens **START-HERE.html** to browse the logo library. It contains previews, format links, digital/print filters and a variation search box. Keep that HTML file beside the artwork folders so its links work. It needs no account or internet connection; the creator links are external.
+Send the ZIP. After extracting it, the client opens **START-HERE.html** to browse the logo library. It contains previews, format links, digital/print filters, a variation search box, copyable colour values and the usage guidelines. Clients who prefer a PDF can open the brand sheet instead. Keep that HTML file beside the artwork folders so its links work. It needs no account or internet connection; the creator links are external.
 
 ## Privacy
 
-Artwork stays on your Mac. The header makes a public request to GitHub for the repository star count, sending no artwork or package names. Exporting does not need an internet connection.
+Artwork stays on your Mac. When the window opens, the header makes two public requests to GitHub: one for the repository star count and one for the latest releases. Neither sends artwork or package names. Exporting does not need an internet connection. Presets and recent packages are stored in `~/Library/Application Support/Logo Parcel/`; recent packages record artwork file locations so they can be reopened.
 
 ## File support and limits
 
@@ -87,9 +100,9 @@ Artwork stays on your Mac. The header makes a public request to GitHub for the r
 | EPS | Yes | Yes | May flatten effects/transparency |
 | AI | Yes | Yes | PDF-compatible output, not Adobe's full native editing data |
 
-CMYK conversion uses VectorCraft's colour settings. Printed appearance depends on the output profile, paper and printer. Automatic monochrome recolouring also recolours white filled shapes; use real cutout paths or approved monochrome artwork where needed. Check font substitutions, images and complex effects in the previews and export notes.
+CMYK conversion uses VectorCraft's generic SWOP-like profile unless you choose a print profile. A chosen profile is loaded only for the export and removed from VectorCraft's settings afterwards, unless you had already loaded it there yourself. Brand colour CMYK values use the same profile; Pantone references are entered by you, not calculated. Printed appearance depends on the output profile, paper and printer. Automatic monochrome recolouring also recolours white filled shapes; use real cutout paths or approved monochrome artwork where needed. Check font substitutions, images and complex effects in the previews and export notes.
 
-The current version has no custom filename templates, saved presets, live connection to an unsaved editor document, Pantone workflow or print-profile picker.
+The current version has no live connection to an unsaved editor document and does not calculate Pantone matches. Web and social sets are full-colour RGB PNGs on white or transparent backgrounds.
 
 ## Build locally (development)
 
@@ -111,6 +124,8 @@ The app is written to `dist/Logo Parcel.app`. It contains the runtime, engine, i
 - `src/LogoParcel.swift` — native SwiftUI interface and guided workflow.
 - `src/packager.py` — VectorCraft export orchestration, preview verification and packaging.
 - `src/htmlguide.py` — self-contained client HTML guide.
+- `src/brandfiles.py` — swatch (ASE/CSS), favicon (ICO), PDF brand sheet and ICC profile helpers, using the Python standard library only.
+- `tests/` — engine tests run against a fake `vectorcraft-cli`: `python3 -m unittest discover tests`.
 - `resources/branding.json` — creator website link.
 - `scripts/build-local.sh` — local development build.
 - `RELEASE_CHECKLIST.md` — remaining public-distribution steps.
