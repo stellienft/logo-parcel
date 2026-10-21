@@ -251,7 +251,11 @@ struct Content:View {
   VStack(alignment:.leading,spacing:13){
    HStack{Text(String(format:"%02d",(m.allRoles.firstIndex(of:role) ?? 0)+1)).font(.system(size:10,weight:.bold,design:.monospaced)).tracking(1).padding(.horizontal,7).padding(.vertical,5).background(accent);Spacer();Text(role==m.primaryRole ? "REQUIRED" : "OPTIONAL").font(.system(size:10,design:.monospaced)).tracking(1.5).foregroundColor(.secondary)}
    Divider()
-   Text(role).font(.system(size:22,weight:.bold)).tracking(-0.5).lineLimit(2).frame(minHeight:28,alignment:.leading)
+   HStack(alignment:.firstTextBaseline,spacing:8){
+    Text(role).font(.system(size:22,weight:.bold)).tracking(-0.5).lineLimit(2).frame(maxWidth:.infinity,minHeight:28,alignment:.leading)
+    Button {m.editRole(role)} label:{Image(systemName:"pencil").font(.system(size:14,weight:.medium)).foregroundColor(.secondary).frame(width:28,height:28).contentShape(Rectangle())}
+     .buttonStyle(.plain).help("Rename this item").accessibilityLabel("Rename \(role)")
+   }
    if let a=m.artwork[role] {
     ArtImage(path:a.thumbnail).frame(height:155)
     Text(URL(fileURLWithPath:a.source).lastPathComponent).font(.system(size:11,design:.monospaced)).lineLimit(1).truncationMode(.middle)
@@ -262,8 +266,7 @@ struct Content:View {
     Text(role==m.primaryRole ? "Needed to start your package" : "Leave empty if you don’t have one").font(.system(size:11,design:.monospaced)).foregroundColor(.secondary).frame(height:30,alignment:.top)
     Button(m.baseRoles.contains(role) ? "Add \(role.lowercased())…" : "Choose artwork…"){m.add(role)}.buttonStyle(CraftButton()).frame(maxWidth:.infinity,alignment:.leading)
    }
-   Divider()
-   HStack {Button("Rename"){m.editRole(role)}.accessibilityLabel("Rename \(role)");Spacer();if m.extraRoles.contains(role){Button("Remove item"){m.removeRole(role)}}}
+   if m.extraRoles.contains(role) {Divider();Button("Remove item"){m.removeRole(role)}}
   }.padding(18).frame(maxWidth:.infinity,alignment:.topLeading).craftPanel()
  }
  var optionsPage:some View {
