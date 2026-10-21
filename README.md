@@ -8,11 +8,11 @@ Created by [Stellio Creative Labs](https://stellio.com.au) · [GitHub / @stellie
 
 Logo Parcel takes your approved logo artwork and packages the versions your client needs: colour variations, RGB and CMYK files, organised folders, a ZIP archive and a visual HTML guide.
 
-**Status: beta, version 0.5.0.** Apple silicon (M1 or later), macOS 13 or newer. Tested on macOS 26.6.2; older supported versions have not yet been tested on clean Macs. Intel Macs are not supported by this download.
+**Status: beta, version 0.5.1.** Apple silicon (M1 or later), macOS 13 or newer. Tested on macOS 26.6.2; older supported versions have not yet been tested on clean Macs. Intel Macs are not supported by this download.
 
 ## Download for Mac
 
-[**Download Logo Parcel 0.5.0 beta for Apple silicon**](https://github.com/stellienft/logo-parcel/releases/download/v0.5.0-beta.1/Logo-Parcel-0.5.0-macOS-arm64.zip)
+[**Download Logo Parcel 0.5.1 beta for Apple silicon**](https://github.com/stellienft/logo-parcel/releases/download/v0.5.1-beta.1/Logo-Parcel-0.5.1-macOS-arm64.zip)
 
 1. Download and unzip the archive.
 2. Drag **Logo Parcel.app** into **Applications**.
