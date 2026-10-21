@@ -54,7 +54,7 @@ Save your logo from VectorCraft first. SVG or `.vectorcraft` are good starting p
 
 ### 2. Add your artwork
 
-Click **Add full logo**. Add a symbol or wordmark if needed. Use **Rename** under any card to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails.
+Click **Add full logo**. Add a symbol or wordmark if needed. Use the **pencil icon** beside any card title to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails.
 
 ### 3. Choose your exports
 
