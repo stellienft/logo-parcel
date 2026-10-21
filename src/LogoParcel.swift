@@ -210,7 +210,6 @@ struct Content:View {
    if let url=creatorWebsite {Link("STELLIO CREATIVE LABS ↗",destination:url).foregroundColor(ink)}
    else {Text("STELLIO CREATIVE LABS").foregroundColor(ink)}
    Spacer()
-   Link("GITHUB / @STELLIENFT ↗",destination:URL(string:"https://github.com/stellienft")!).foregroundColor(.secondary)
   }.font(.system(size:9,weight:.medium,design:.monospaced)).tracking(1).padding(.horizontal,30).padding(.bottom,13)
  }
  var header:some View {
