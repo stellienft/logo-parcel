@@ -8,7 +8,19 @@ Created by [Stellio Creative Labs](https://stellio.com.au) · [GitHub / @stellie
 
 Logo Parcel takes your approved logo artwork and packages the versions your client needs: colour variations, RGB and CMYK files, organised folders, a ZIP archive and a visual HTML guide.
 
-**Status: development preview, version 0.4.0.** The source is public and open-source. A ready-to-install public download has not been published. The current build targets Apple silicon and uses `/usr/bin/python3`; a self-contained, signed and notarised public build is still required.
+**Status: beta, version 0.5.0.** Apple silicon (M1 or later), macOS 13 or newer. Tested on macOS 26.6.2; older supported versions have not yet been tested on clean Macs. Intel Macs are not supported by this download.
+
+## Download for Mac
+
+[**Download Logo Parcel 0.5.0 beta for Apple silicon**](https://github.com/stellienft/logo-parcel/releases/download/v0.5.0-beta.1/Logo-Parcel-0.5.0-macOS-arm64.zip)
+
+1. Download and unzip the archive.
+2. Drag **Logo Parcel.app** into **Applications**.
+3. Open Logo Parcel. The export engine and Python runtime are included; no developer tools are needed.
+
+This community beta is ad-hoc signed, not Apple Developer ID signed or notarised. macOS may block the first launch. If you trust this download, follow [Apple's instructions](https://support.apple.com/en-au/102445) to approve it in **System Settings → Privacy & Security → Open Anyway**. Some managed Macs may not permit this. Do not disable Gatekeeper globally.
+
+Release assets include a SHA-256 checksum. Source code downloads alone are not the installable app.
 
 ## Screenshots
 
@@ -24,14 +36,15 @@ A look at the four-step workflow in version 0.4.0, using fictional example artwo
 
 ## What it does
 
-- Start with a full logo; optionally add a symbol and wordmark.
+- Start with a full logo; optionally add a symbol and wordmark. Rename any artwork title, including these three defaults.
 - Add named variations: horizontal, vertical, with slogan, without slogan, social avatars or your own label.
 - Choose SVG, PNG, JPG, PDF, EPS and PDF-compatible AI exports.
 - Choose digital (RGB), print (CMYK) or both.
 - Generate full-colour, black, white, grayscale, inverted and custom solid versions.
 - Review visual previews and select the exact files to deliver.
 - Save an organised folder and ZIP, with a branded, offline HTML logo library.
-- Keep original artwork unchanged. All processing takes place locally.
+- Keep original artwork unchanged. All artwork processing takes place locally.
+- See the repository’s GitHub star count in the header. It updates when the app window opens and links to the project. An unavailable count displays a dash.
 
 ## How to use it
 
@@ -41,7 +54,7 @@ Save your logo from VectorCraft first. SVG or `.vectorcraft` are good starting p
 
 ### 2. Add your artwork
 
-Click **Add full logo**. Add a symbol or wordmark if needed. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails.
+Click **Add full logo**. Add a symbol or wordmark if needed. Use **Rename** under any card to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails.
 
 ### 3. Choose your exports
 
@@ -58,6 +71,10 @@ Choose a package name and save folder, then click **Export**. Existing packages 
 ### 6. Hand the package to your client
 
 Send the ZIP. After extracting it, the client opens **START-HERE.html** to browse the logo library. It contains previews, format links, digital/print filters and a variation search box. Keep that HTML file beside the artwork folders so its links work. It needs no account or internet connection; the creator links are external.
+
+## Privacy
+
+Artwork stays on your Mac. The header makes a public request to GitHub for the repository star count, sending no artwork or package names. Exporting does not need an internet connection.
 
 ## File support and limits
 
@@ -76,16 +93,18 @@ The current version has no custom filename templates, saved presets, live connec
 
 ## Build locally (development)
 
-Requirements: macOS, Apple Command Line Tools with Swift, Python 3, and the official VectorCraft 0.13.1 macOS CLI release package. The present interface launches `/usr/bin/python3`; this dependency must be replaced by a bundled runtime before public release.
+Requirements: an Apple silicon Mac, Apple Command Line Tools with Swift, the official VectorCraft 0.13.1 macOS CLI package, and the standalone Python runtime pinned in `resources/runtime.json`.
 
 1. Download and extract the official [VectorCraft CLI release](https://github.com/storytold/vectorcraft/releases/tag/v0.13.1), including its licence and notice files.
-2. Run the build script, pointing it at the extracted directory:
+2. Download the Python install-only archive specified in `resources/runtime.json` and verify its SHA-256 checksum. Extract it to obtain the `python` folder.
+3. Obtain the matching full Python distribution from [Python Build Standalone release 20261013](https://github.com/astral-sh/python-build-standalone/releases/tag/20261013) and copy its `python/licenses` directory into the extracted runtime's `python/licenses`. The matching full archive is `cpython-3.13.16+20261013-aarch64-apple-darwin-pgo+lto-full.tar.zst`, SHA-256 `3497822d8bf4884bc79258f62668f985654d03d40ec74da4ca9ae7a5667c4362`.
+4. Build with both extracted directories:
 
 ```sh
-bash scripts/build-local.sh /absolute/path/to/vectorcraft-cli-0.13.1-macos-universal
+bash scripts/build-local.sh /path/to/vectorcraft-cli-package /path/to/python
 ```
 
-The app is written to `dist/Logo Parcel.app`. It is ad-hoc signed for local development only. Building on a Mac does not automatically create a universal binary or a public distribution signature.
+The app is written to `dist/Logo Parcel.app`. It contains the runtime, engine, icon and licence notices. The build is ad-hoc signed for beta testing and is not notarised. It targets Apple silicon and macOS 13 or newer.
 
 ## Project structure
 
@@ -100,7 +119,7 @@ Do not commit the generated app, engine binary, test output, customer logos, cer
 
 ## Credits and licensing
 
-Original app and guide by Stellio Creative Labs. Export rendering uses [VectorCraft](https://github.com/storytold/vectorcraft), with its supplied MIT/Apache and third-party notices preserved in distributed engine packages. Logo Parcel is independent of ArtCraft.
+Original app and guide by Stellio Creative Labs. Export rendering uses [VectorCraft](https://github.com/storytold/vectorcraft), with its supplied MIT/Apache and third-party notices preserved in distributed engine packages. Logo Parcel is independent of ArtCraft. The bundled Python runtime is supplied by [Python Build Standalone](https://github.com/astral-sh/python-build-standalone); Python and dependency licence notices are retained in the app.
 
 Logo Parcel's original source is available under the [MIT License](LICENSE), copyright © 2026 Stellio Creative Labs. VectorCraft and other dependencies retain their own licences and notices.
 
