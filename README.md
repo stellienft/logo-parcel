@@ -8,11 +8,11 @@ Created by [Stellio Creative Labs](https://stellio.com.au) · [GitHub / @stellie
 
 Logo Parcel takes your approved logo artwork and packages the versions your client needs: colour variations, RGB and CMYK files, organised folders, a ZIP archive and a visual HTML guide.
 
-**Status: beta, version 0.5.2.** Apple silicon (M1 or later), macOS 13 or newer. Tested on macOS 26.6.2; older supported versions have not yet been tested on clean Macs. Intel Macs are not supported by this download.
+**Status: beta, version 0.6.0.** Apple silicon (M1 or later), macOS 13 or newer. Tested on macOS 26.6.2; older supported versions have not yet been tested on clean Macs. Intel Macs are not supported by this download.
 
 ## Download for Mac
 
-[**Download Logo Parcel 0.5.2 beta for Apple silicon**](https://github.com/stellienft/logo-parcel/releases/download/v0.5.2-beta.1/Logo-Parcel-0.5.2-macOS-arm64.zip)
+[**Download Logo Parcel 0.6.0 beta for Apple silicon**](https://github.com/stellienft/logo-parcel/releases/download/v0.6.0-beta.1/Logo-Parcel-0.6.0-macOS-arm64.zip)
 
 1. Download and unzip the archive.
 2. Drag **Logo Parcel.app** into **Applications**.
@@ -40,7 +40,14 @@ A look at the four-step workflow in version 0.4.0, using fictional example artwo
 - Add named variations: horizontal, vertical, with slogan, without slogan, social avatars or your own label.
 - Choose SVG, PNG, JPG, PDF, EPS and PDF-compatible AI exports.
 - Choose digital (RGB), print (CMYK) or both.
-- Generate full-colour, black, white, grayscale, inverted and custom solid versions.
+- Generate full-colour, black, white, grayscale and custom solid versions; use supplied dark-background artwork instead of colour inversion.
+- Add approved black, white and dark-background artwork per item to preserve symbol details and cutouts.
+- Check missing fonts, linked images, bitmap resolution and risky monochrome recolouring before previewing.
+- Save and reopen portable `.logoparcel` projects containing artwork snapshots, overrides, names, settings and file selections.
+- Drop saved files onto artwork cards or the multi-file drop area.
+- Choose automatic, white, dark, checkerboard or custom HEX preview backgrounds.
+- Apply Client handover, Digital only or Print supplier presets; save and delete your own.
+- Check GitHub Releases automatically at startup and daily, or use **Logo Parcel → Check for Updates…**.
 - Add ready-made web and social sets: favicons (`favicon.ico`, 16 and 32 px, Apple touch icon, Android 192 and 512 px), a profile avatar, LinkedIn, X, Facebook and YouTube covers, and an email signature image.
 - Choose the printer's CMYK profile (an installed ICC profile or any `.icc` file) instead of the generic profile.
 - Get plain-language checks before you deliver: live text, small or linked images, very light artwork, and wide artwork used for favicons.
@@ -49,8 +56,7 @@ A look at the four-step workflow in version 0.4.0, using fictional example artwo
 - Save an organised folder and ZIP, with a branded, offline HTML logo library.
 - Give clients their brand colours (HEX, RGB, CMYK and optional Pantone references) with ASE, CSS and JSON swatch files.
 - Include usage guidelines (clear space, minimum sizes, and visual do's and don'ts) and a one-page PDF brand sheet.
-- Save export settings as named presets, and reopen recent packages to update them after a logo change.
-- Drag artwork files straight onto the artwork cards.
+- Reopen saved projects from the Recent projects menu.
 - Keep original artwork unchanged. All artwork processing takes place locally.
 - See the repository’s GitHub star count in the header, and an **Update** badge when a newer release is published. Both update when the app window opens. An unavailable count displays a dash.
 
@@ -62,18 +68,19 @@ Save your logo from VectorCraft first. SVG or `.vectorcraft` are good starting p
 
 ### 2. Add your artwork
 
-Click **Add full logo**, or drag a file onto the card. Add a symbol or wordmark if needed. Use the **pencil icon** beside any card title to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails. To update an earlier package, choose **Reopen** under **Recent packages**; artwork that has moved is listed so you can choose it again.
+Click **Add full logo**, or drop a saved supported file onto its card. Drop several files on the drop area to add variations. Direct dragging from the VectorCraft canvas is not supported.  Add a symbol or wordmark if needed. Use the **pencil icon** beside any card title to change its title; the new title is used in previews, folders and filenames. The first card remains required regardless of its title. Click **Add variation** for additional items and give each one a descriptive name, such as “Vertical lockup — no slogan”. For files with several artboards, select the relevant artwork from the thumbnails.
+
+Expand **Approved colour versions** under an imported item to add black, white and dark-background files. These are exported as supplied, with normal colour-mode conversion and padding. Without an override, black and white are generated by merging colours; this can hide interior shapes. A dark-background version always requires supplied artwork for every included item.
+
+Use **Save project…** (⌘S) to save an editable `.logoparcel` project and **Open project…** (⌘O) to restore it. Artwork is copied into the project, with linked content embedded where possible. Fonts are not bundled; install required fonts or outline lettering before sharing a project. Rebuild the preview after reopening; saved file selections are reapplied to matching exports. Custom presets are stored on your Mac and do not include artwork.
 
 ### 3. Choose your exports
 
-Choose **Digital only**, **Print only** or **Both**. Select file formats, colour versions and any **web and social sets**. Open **More options** for raster widths, clear space, the **print profile** and other settings. Incompatible format/mode combinations are excluded automatically.
-
-Use **Save as preset…** to keep these choices, including the print profile and filename pattern, then **Apply a preset** on the next job.
+Apply a preset, or choose **Digital only**, **Print only** or **Both**. Every setting remains editable. Select file formats, colour versions and optional web/social sets. Open **More options** for raster widths, clear space, print profiles and other settings. Incompatible format/mode combinations are excluded automatically.
 
 ### 4. Review the actual files
 
-Click **Build visual preview**. Enlarge a preview to inspect it, filter the grid and uncheck files you do not want. White artwork is displayed against a dark tile so you can see it. **Check before you deliver** lists anything worth fixing in the artwork first; these notes are kept in `export-report.json`, not shown to your client.
-
+Click **Check artwork & preview**. Resolve blocking errors such as missing fonts or links, and acknowledge any warnings before building the preview. Checks are advisory, not print certification.  Enlarge a preview to inspect it, filter the grid and uncheck files you do not want. Use the **Preview background** menu to inspect transparency and contrast. Background changes only affect the preview; they do not alter exports. Automatic mode shows white and dark-background artwork against a dark tile.
 ### 5. Name and save
 
 Choose a package name and save folder, then click **Export**. Existing packages are kept with numbered filenames. The files delivered are the exact bytes reviewed in the preview.
@@ -83,26 +90,25 @@ Choose a package name and save folder, then click **Export**. Existing packages 
 
 ### 6. Hand the package to your client
 
-Send the ZIP. After extracting it, the client opens **START-HERE.html** to browse the logo library. It contains previews, format links, digital/print filters, a variation search box, copyable colour values and the usage guidelines. Clients who prefer a PDF can open the brand sheet instead. Keep that HTML file beside the artwork folders so its links work. It needs no account or internet connection; the creator links are external.
+Send the ZIP. After extracting it, the client opens **START-HERE.html** to browse the logo library. It contains previews, format links, digital/print filters, a variation search box, detected HEX/RGB colours, export clear-space information and guidance for websites, social graphics and print. Detected colours are not Pantone or approved print specifications; export padding is not a substitute for brand guidelines. Keep that HTML file beside the artwork folders so its links work. It needs no account or internet connection; the creator links are external.
 
 ## Privacy
 
-Artwork stays on your Mac. When the window opens, the header makes two public requests to GitHub: one for the repository star count and one for the latest releases. Neither sends artwork or package names. Exporting does not need an internet connection. Presets and recent packages are stored in `~/Library/Application Support/Logo Parcel/`; recent packages record artwork file locations so they can be reopened.
-
+Artwork stays on your Mac. The header requests the public GitHub star count. The update checker requests public release metadata at launch and then daily while running. Neither sends artwork or package names. Automatic checks and beta-release checks can be switched off in **Check for Updates…**. Updates open GitHub for manual download; the app does not install updates itself. Earlier versions must be updated manually once to receive the checker. Exporting does not need an internet connection.
 ## File support and limits
 
 | Format | Digital RGB | Print CMYK | Notes |
 | --- | --- | --- | --- |
 | SVG | Yes | No | Scalable web artwork; optional text outlining |
 | PNG | Yes | No | Transparent backgrounds |
-| JPG | Yes | Yes | White variants use a black background |
+| JPG | Yes | Yes | White and dark-background variants use a black background |
 | PDF | Yes | Yes | VectorCraft export; check printer requirements |
 | EPS | Yes | Yes | May flatten effects/transparency |
 | AI | Yes | Yes | PDF-compatible output, not Adobe's full native editing data |
 
-CMYK conversion uses VectorCraft's generic SWOP-like profile unless you choose a print profile. A chosen profile is loaded only for the export and removed from VectorCraft's settings afterwards, unless you had already loaded it there yourself. Brand colour CMYK values use the same profile; Pantone references are entered by you, not calculated. Printed appearance depends on the output profile, paper and printer. Automatic monochrome recolouring also recolours white filled shapes; use real cutout paths or approved monochrome artwork where needed. Check font substitutions, images and complex effects in the previews and export notes.
+CMYK conversion uses VectorCraft's generic SWOP-like profile unless you choose a print profile. A chosen profile is loaded only for the export, without changing VectorCraft’s saved settings. Projects include a copy of the selected profile. Brand colour CMYK values use the same profile; Pantone references are entered by you, not calculated. Printed appearance depends on the output profile, paper and printer. Automatic monochrome recolouring also recolours white filled shapes; use real cutout paths or approved monochrome artwork where needed. Check font substitutions, images and complex effects in the previews and export notes.
 
-The current version has no live connection to an unsaved editor document and does not calculate Pantone matches. Web and social sets are full-colour RGB PNGs on white or transparent backgrounds.
+The current version has no live connection to an unsaved editor document and does not calculate Pantone matches. Web and social sets use full-colour RGB artwork on white or transparent backgrounds. These canvas sizes are starting templates; check cropping on the destination platform.
 
 ## Build locally (development)
 
@@ -118,6 +124,16 @@ bash scripts/build-local.sh /path/to/vectorcraft-cli-package /path/to/python
 ```
 
 The app is written to `dist/Logo Parcel.app`. It contains the runtime, engine, icon and licence notices. The build is ad-hoc signed for beta testing and is not notarised. It targets Apple silicon and macOS 13 or newer.
+
+## Regression checks
+
+Run the Python tests with the bundled engine:
+
+```sh
+LOGO_PARCEL_ENGINE="/path/to/vectorcraft-cli" python3 tests/test_workflows.py
+```
+
+The tests cover approved cutouts across all six formats in RGB/CMYK, preview-to-delivery integrity, missing fonts, bitmap resolution, portable projects and invalid project paths. `tests/ModelTests.swift` covers version comparisons, presets and artwork renaming; compile it together with the app declarations with the `@main LogoParcel` entry point removed.
 
 ## Project structure
 
