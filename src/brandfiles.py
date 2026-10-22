@@ -86,7 +86,7 @@ def pdf_text(s):
     s=s.encode('cp1252','replace').decode('cp1252')
     return '('+s.replace('\\','\\\\').replace('(','\\(').replace(')','\\)')+')'
 
-def brand_sheet(brand, logo_png, colours, usage, files, website=''):
+def brand_sheet(brand, logo_png, colours, usage, files, website='', dark=False):
     """A one-page A4 PDF for clients who will not open the HTML guide."""
     W,H=595,842; ops=[]; images=[]
     def text(x,y,s,size=10,bold=False,grey=False):
@@ -95,10 +95,11 @@ def brand_sheet(brand, logo_png, colours, usage, files, website=''):
         r,g,b=(v/255 for v in rgb)
         ops.append(f'{r:.3f} {g:.3f} {b:.3f} {"RG" if stroke else "rg"} {x:.1f} {y:.1f} {w:.1f} {h:.1f} re {"S" if stroke else "f"}')
     rect(0,H-6,W,6,(250,74,59))
-    text(40,H-50,'BRAND SHEET',9,True,True); text(40,H-82,brand[:60],26,True)
+    text(40,H-50,'BRAND SHEET',9,True,True); text(40,H-82,brand,min(26,515/max(1,len(brand)*0.65)),True)
     text(40,H-102,f'{len(files)} logo files - open START-HERE.html in the package for every file.',9,grey=True)
     y=H-130; box=150
     rect(40,y-box,W-80,box,(204,202,197),stroke=True)
+    if dark: rect(41,y-box+1,W-82,box-2,(32,32,34))
     if logo_png:
         try:
             w,h,rgb,alpha=decode_png(logo_png); images.append((w,h,rgb,alpha))
@@ -119,7 +120,7 @@ def brand_sheet(brand, logo_png, colours, usage, files, website=''):
         y-=((min(len(colours),12)-1)//cols+1)*92+16
     if usage:
         text(40,y,'USING THE LOGO',9,True,True); y-=16
-        rules=[f'Clear space: keep at least {usage["padding"]}% of the logo\'s longest side free on every side.']
+        rules=[f'Export padding: {usage["padding"]}% of the longest side on each edge. Follow approved brand guidelines for clear space.']
         if usage.get('minDigital'): rules.append(f'Minimum size on screen: {usage["minDigital"]} px wide.')
         if usage.get('minPrint'): rules.append(f'Minimum size in print: {usage["minPrint"]} mm wide.')
         rules+=['Do use the supplied files without changes, on backgrounds with enough contrast.','Do not stretch, rotate, recolour, outline or add effects such as shadows.','Do not place the logo on busy images where it is hard to read.']
@@ -129,6 +130,7 @@ def brand_sheet(brand, logo_png, colours, usage, files, website=''):
                 if y<70: break
                 text(52 if i else 40,y,('- ' if not i else '')+line,9); y-=13
             y-=3
+    text(40,51,'See START-HERE.html for the full colour list and usage guidance.',7,grey=True)
     text(40,36,'Packaged with Logo Parcel'+(' - '+website if website else ''),7,grey=True)
     stream='\n'.join(ops).encode('cp1252','replace')
     objs=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>']

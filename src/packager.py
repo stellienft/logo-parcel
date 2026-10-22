@@ -6,7 +6,7 @@ from htmlguide import guide
 import brandfiles
 ENGINE = Path(__file__).parent / 'engine' / 'vectorcraft-cli'
 FORMATS = {'ai','eps','pdf','svg','png','jpg'}
-VARIANTS = {'full-colour','black','white','grayscale','inverted','custom'}
+VARIANTS = {'full-colour','black','white','grayscale','dark-background','custom'}
 EXTRAS = {'favicon','social','email'}
 TEMPLATE = '{brand}-{item}-{colour}-{mode}-{size}'
 TOKENS = {'brand','item','colour','mode','size','format'}
@@ -25,7 +25,7 @@ def run(source, commands):
     args=[str(ENGINE),'run','--in',str(source)]
     for cmd, params in commands:
         args += ['--cmd',cmd,'--params',json.dumps(params)]
-    p=subprocess.run(args, capture_output=True, text=True, timeout=240)
+    p=subprocess.run(args, capture_output=True, text=True, timeout=240, env={**os.environ,"VECTORCRAFT_NO_PREFS":"1"})
     if p.returncode: raise RuntimeError(p.stderr.strip() or p.stdout[-2000:])
     rows=[json.loads(line) for line in p.stdout.splitlines() if line.strip()]
     for row in rows:
@@ -40,9 +40,132 @@ def inspect(path):
     data=result(rows,'document.info')['document']
     return {'source':str(Path(path).resolve()),'layouts':[{'index':i,'name':a.get('name') or 'Artboard-'+str(i+1)} for i,a in enumerate(data['artboards'])], 'warnings': rows[0]['result'].get('warnings',[])}
 
+def prepare_artwork(artwork, folder, padding):
+    rows=run(artwork['source'],[('document.exportForScreens',{'folder':str(folder),'artboards':[artwork['index']],'formats':[{'format':'vectorcraft'}]})])
+    isolated=result(rows,'document.exportForScreens')['files'][0]
+    rows=run(isolated,[('artboard.fitToArt',{'index':0}),('document.inspect',{'depth':50,'childLimit':10000})])
+    d=result(rows,'document.inspect'); a=d['artboards'][0]
+    def locked(nodes):
+        return any(n.get('locked',False) or locked(n.get('children',[])) for n in nodes)
+    if locked(d.get('layers',[])):
+        raise ValueError('Unlock the selected artwork before exporting so every shape is included.')
+    x,y,w,h=[a[k] for k in ('x','y','width','height')]
+    if w<=0 or h<=0: raise ValueError('The selected artboard has no visible artwork.')
+    pad=max(w,h)*float(padding)/100
+    prep=[('artboard.fitToArt',{'index':0}),('artboard.setProps',{'index':0,'x':x-pad,'y':y-pad,'width':w+2*pad,'height':h+2*pad,'moveArt':False}),('select.all',{})]
+    palette=result(run(isolated,prep+[('recolor.colors',{})]),'recolor.colors')['colors']
+    return isolated,prep,palette,w,h,pad
+
+def preflight(cfg):
+    issues=[]; colours=[]
+    def add(role,message,severity='warning'):
+        item=dict(role=role,message=message,severity=severity)
+        if item not in issues: issues.append(item)
+    with tempfile.TemporaryDirectory(prefix='logo-parcel-check-') as temp:
+      for li,layout in enumerate(cfg['layouts']):
+        role=layout['name']
+        if 'dark-background' in cfg.get('variants',[]) and not layout.get('overrides',{}).get('dark-background'):
+            add(role,'Add a dark-background artwork override or turn that version off.','error')
+        sources=[('full-colour',layout)]+[(v,a) for v,a in layout.get('overrides',{}).items() if v in cfg.get('variants',[])]
+        for variant,art in sources:
+          label=role if variant=='full-colour' else role+' / '+variant
+          try:
+            folder=Path(temp)/str(li)/variant;folder.mkdir(parents=True)
+            isolated,prep,palette,w,h,pad=prepare_artwork(art,folder,cfg.get('padding',10))
+            rows=run(isolated,[('text.missingFonts',{}),('links.list',{}),('document.info',{})])
+            if variant=='full-colour':
+                for message in design_notes(layout,result(rows,'document.info'),palette,(w,h),cfg): add(label,message)
+            for row in rows:
+                r=row.get('result',{})
+                if isinstance(r,dict):
+                    for warning in r.get('warnings',[]): add(label,str(warning))
+            for font in result(rows,'text.missingFonts').get('fonts',[]):
+                add(label,'Font unavailable: '+font['family']+'. Install it or outline the lettering in your original artwork.','error')
+            for link in result(rows,'links.list').get('links',[]):
+                if link.get('status')=='missing': add(label,'A linked image is missing. Relink or embed it in your artwork.','error')
+                if link.get('document'): continue
+                add(label,'Contains bitmap imagery. Vector exports will still contain pixels; automatic recolouring may not affect those pixels.')
+                info=result(run(isolated,[('links.info',{'id':link['id']})]),'links.info')
+                ppi=info.get('effectivePpi',[])
+                if 'cmyk' in cfg.get('modes',[]) and ppi and min(ppi)<300:
+                    add(label,'Bitmap resolution is about '+str(round(min(ppi)))+' ppi at its placed size. Confirm the intended print size; 300 ppi is a common target.')
+                ratio=max(cfg.get('sizes',[1024]) or [1024])/(w+2*pad)
+                if any(f in cfg.get('formats',[]) for f in ('png','jpg')) and ratio*float(info.get('width',0))>float(info.get('pixelWidth',0))+1:
+                    add(label,'An image will be enlarged beyond its pixel width in the largest raster export. Supply higher-resolution artwork or use a smaller export size.')
+            if variant=='full-colour':
+                for c in palette:
+                    value=c.get('hex','')
+                    if re.fullmatch(r'#[0-9a-fA-F]{6}',value) and value.upper() not in colours: colours.append(value.upper())
+                if len(palette)>1:
+                    for v in ('black','white','custom'):
+                        if v in cfg.get('variants',[]) and not layout.get('overrides',{}).get(v):
+                            add(label,'Automatic '+v+' recolouring merges different colours. Interior shapes may disappear. Inspect the preview or supply approved artwork for that version.')
+          except Exception as e: add(label,'Artwork could not be checked: '+str(e),'error')
+    return {'issues':issues,'colours':colours}
+
+def save_project(cfg):
+    """A portable archive of editable artwork snapshots, previews and settings."""
+    dest=Path(cfg['path']).resolve()
+    with tempfile.TemporaryDirectory(prefix='logo-parcel-project-',dir=dest.parent) as temp:
+        temp=Path(temp);manifest=json.loads(json.dumps(cfg['project']));manifest['version']=1
+        for i,item in enumerate(manifest['items']):
+            for variant,art in item['artwork'].items():
+                stem=str(i)+'-'+slug(variant)
+                rows=run(art['source'],[('links.list',{})])
+                links=result(rows,'links.list')['links']
+                if any(l.get('status')=='missing' for l in links): raise ValueError('Relink missing artwork before saving the project.')
+                cmds=[]
+                ids=[l['id'] for l in links if l.get('linked')]
+                if ids: cmds.append(('links.embed',{'ids':ids}))
+                folder=temp/stem;folder.mkdir()
+                cmds.append(('document.exportForScreens',{'folder':str(folder),'artboards':[art['index']],'formats':[{'format':'vectorcraft'}]}))
+                rows=run(art['source'],cmds)
+                if any(r.get('command')=='links.embed' and r['result'].get('missing') for r in rows): raise ValueError('Some linked artwork could not be embedded.')
+                generated=Path(result(rows,'document.exportForScreens')['files'][0])
+                asset=temp/(stem+'.vectorcraft');shutil.copyfile(generated,asset);shutil.rmtree(folder)
+                thumb=temp/(stem+'.png');thumbnail(asset,thumb)
+                art.update(source=asset.name,index=0,thumbnail=thumb.name)
+        profile=manifest.get('settings',{}).get('profile')
+        if profile:
+            path=Path(profile)
+            if not path.is_file() or path.stat().st_size>32_000_000: raise ValueError('The project print profile is missing or too large.')
+            shutil.copyfile(path,temp/'print-profile.icc');manifest['settings']['profile']='print-profile.icc'
+        (temp/'project.json').write_text(json.dumps(manifest,indent=2))
+        archive=temp/'saved.zip'
+        with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
+            for f in temp.iterdir():
+                if f.is_file() and f!=archive: z.write(f,f.name)
+        os.replace(archive,dest)
+    return {'path':str(dest)}
+
+def open_project(cfg):
+    folder=Path(cfg['cache']).resolve();folder.mkdir(parents=True,exist_ok=True)
+    with zipfile.ZipFile(cfg['path']) as z:
+        entries=z.infolist()
+        if len(entries)>1500 or sum(i.file_size for i in entries)>2_000_000_000: raise ValueError('This project is too large to open safely.')
+        names=[i.filename for i in entries]
+        if len(names)!=len(set(names)) or any(Path(n).name!=n or n in ('.','..') or '\\' in n for n in names): raise ValueError('This project contains invalid file paths.')
+        manifest=json.loads(z.read('project.json'))
+        if manifest.get('version')!=1 or not isinstance(manifest.get('items'),list): raise ValueError('This project version is not supported.')
+        if len(manifest['items'])>100: raise ValueError('This project has too many artwork items.')
+        profile=manifest.get('settings',{}).get('profile')
+        if profile:
+            if profile!='print-profile.icc' or profile not in names: raise ValueError('Project print profile is missing or invalid.')
+            (folder/profile).write_bytes(z.read(profile));manifest['settings']['profile']=str(folder/profile)
+        for item in manifest['items']:
+            for art in item['artwork'].values():
+                for key,ext in [('source','.vectorcraft'),('thumbnail','.png')]:
+                    name=art[key]
+                    if name not in names or not name.endswith(ext): raise ValueError('Project artwork is missing or invalid.')
+                    (folder/name).write_bytes(z.read(name));art[key]=str(folder/name)
+                art['index']=0
+    return manifest
+
+
 def check_template(template):
     unknown=set(re.findall(r'\{([^}]*)\}',template))-TOKENS
     if unknown: raise ValueError('Unknown filename part {'+sorted(unknown)[0]+'}. Use {brand}, {item}, {colour}, {mode}, {size} or {format}.')
+    if template.count('{')!=template.count('}') or re.search(r'[{}]',re.sub(r'\{[^}]*\}','',template)): raise ValueError('Use complete filename parts such as {brand}.')
     if len(template)>120: raise ValueError('Keep the filename pattern under 120 characters.')
 
 def filename(task, brand, template=None):
@@ -102,22 +225,16 @@ def tasks(cfg):
     return out
 
 def print_profile(cfg):
-    """Load the chosen CMYK ICC profile for each engine run, then put the working space back.
-    Returns (commands before, commands after, profile name)."""
+    """Profiles live only in the export process (VECTORCRAFT_NO_PREFS), never in the user's store."""
     path=cfg.get('profile') or ''
     if not path or 'cmyk' not in cfg['modes']: return [],[],''
     if not Path(path).is_file(): raise ValueError('The print profile file can no longer be found. Choose it again in More options.')
-    source=cfg['layouts'][0]['source']
-    working=result(run(source,[('edit.colorSettings',{})]),'edit.colorSettings')
-    known={p['name'] for p in working.get('profiles',[])}
-    loaded=result(run(source,[('color.loadProfile',{'path':path})]),'color.loadProfile')
-    name=loaded['name']; restore=[('edit.colorSettings',{'cmyk':working['cmyk']})]
-    # Profiles VectorCraft remembers are removed again, unless the user had loaded them already.
-    if name not in known: restore.append(('color.removeProfile',{'name':name})); run(source,restore)
+    loaded=result(run(cfg['layouts'][0]['source'],[('color.loadProfile',{'path':path})]),'color.loadProfile')
     if loaded.get('kind')!='cmyk': raise ValueError(Path(path).name+' is not a CMYK output profile.')
-    return [('color.loadProfile',{'path':path}),('edit.colorSettings',{'cmyk':name})],restore,name
+    name=loaded['name']
+    return [('color.loadProfile',{'path':path}),('edit.colorSettings',{'cmyk':name})],[],name
 
-def preflight(layout, info, palette, art, cfg):
+def design_notes(layout, info, palette, art, cfg):
     """Plain-language checks run before anything is rendered."""
     role=layout['name']; checks=[]
     fonts=info.get('fonts') or []
@@ -175,7 +292,10 @@ def package(cfg):
     final=parent/name; n=2
     while final.exists() or final.with_suffix('.zip').exists():
         final=parent/(name+'-'+str(n)); n+=1
-    warnings=[]; report=[]; checks=[]; palettes=[]
+    checked=preflight(cfg)
+    errors=[i['role']+': '+i['message'] for i in checked['issues'] if i['severity']=='error']
+    if errors: raise ValueError('\n'.join(errors))
+    warnings=[]; report=[]; checks=[i['role']+': '+i['message'] for i in checked['issues']]; palettes=[]
     profile=print_profile(cfg); pre,post,profile_name=profile
     with tempfile.TemporaryDirectory(prefix='.logo-parcel-',dir=str(parent)) as temp:
       temp=Path(temp); staging=temp/'package'; staging.mkdir()
@@ -198,22 +318,30 @@ def package(cfg):
         pad=max(w,h)*float(cfg['padding'])/100
         prep=[('artboard.fitToArt',{'index':0}),('artboard.setProps',{'index':0,'x':x-pad,'y':y-pad,'width':w+2*pad,'height':h+2*pad,'moveArt':False}),('select.all',{})]
         palette=result(run(isolated,prep+[('recolor.colors',{})]),'recolor.colors')['colors']
-        palettes.append((layout['name'],palette)); checks+=preflight(layout,info,palette,(w,h),cfg)
+        palettes.append((layout['name'],palette)); checks+=design_notes(layout,info,palette,(w,h),cfg)
+        original=(isolated,prep,palette,x,y,w,h,pad)
         for variant in cfg['variants']:
+          isolated,prep,palette,x,y,w,h,pad=original
+          override=layout.get('overrides',{}).get(variant)
+          if variant=='dark-background' and not override: raise ValueError('Add approved dark-background artwork for '+layout['name']+'.')
+          if override:
+              folder=temp/f'override-{li}-{variant}';folder.mkdir()
+              isolated,prep,palette,w,h,pad=prepare_artwork(override,folder,cfg['padding'])
+              x=prep[1][1]['x']+pad;y=prep[1][1]['y']+pad
           for mode in cfg['modes']:
             batch=[t for t in plan if t['layout']==li and t['variant']==variant and t['mode']==mode and not t.get('group')]
             if not batch: continue
             progress(cfg, 'Rendering '+layout['name']+' · '+variant+' · '+mode.upper(), len(report), len(plan))
             cmds=(pre if mode=='cmyk' else [])+list(prep)
-            if variant in {'black','white','custom'}:
+            if not override and variant in {'black','white','custom'}:
                 color={'black':'#000000','white':'#ffffff','custom':cfg['custom']}[variant]
                 cmds.append(('recolor.apply',{'map':{c['key']:color for c in palette}}))
-            elif variant in {'grayscale','inverted'}:
-                cmds.append(('edit.colors.toGrayscale' if variant=='grayscale' else 'edit.colors.invert',{}))
+            elif not override and variant=='grayscale':
+                cmds.append(('edit.colors.toGrayscale',{}))
             cmds.append(('file.documentColorMode',{'mode':mode,'convert':True,'grays':'black'}))
             for task in batch:
                 dest=staging/task['path']; dest.parent.mkdir(parents=True,exist_ok=True)
-                opts={'path':str(dest),'format':task['format'],'artboard':0,'background':'black' if variant=='white' and task['format']=='jpg' else 'transparent','quality':95}
+                opts={'path':str(dest),'format':task['format'],'artboard':0,'background':'black' if variant in {'white','dark-background'} and task['format']=='jpg' else 'transparent','quality':95}
                 if task['size']:
                     if task['size']*(h+2*pad)/(w+2*pad)>10000: raise ValueError('This artwork is very tall. Choose a smaller image width.')
                     opts['scale']=task['size']/(w+2*pad)
@@ -223,6 +351,7 @@ def package(cfg):
                 cmds.append(('document.export',opts))
             rows=run(isolated,cmds+(post if mode=='cmyk' else []))
             collect(rows,batch,staging,warnings,report)
+        isolated,prep,palette,x,y,w,h,pad=original
         extras=[t for t in plan if t['layout']==li and t.get('group')]
         if extras:
             progress(cfg, 'Rendering web and social files for '+layout['name'], len(report), len(plan))
@@ -245,7 +374,7 @@ def package(cfg):
                 if not all(p.is_file() and p.stat().st_size for p in parts): raise RuntimeError('Export was not produced: '+task['path'])
                 (staging/task['path']).write_bytes(brandfiles.ico([p.read_bytes() for p in parts])); report.append(task)
       colours=colour_sheet(cfg['layouts'][0]['source'],palettes,profile)
-      notes=['AI is VectorCraft’s PDF-compatible AI export, not Adobe-native private editing data.','PNG and SVG are RGB only. CMYK applies to PDF, EPS, AI and JPEG.','White JPEGs use a black background. Transparent formats retain transparency.','CMYK conversion uses '+(profile_name if profile_name else 'VectorCraft’s configured colour settings')+'. Confirm the printer’s required ICC profile before production.','Layout names come from approved artboards. New logo arrangements are not invented.','SVG text is outlined when selected; other formats use their VectorCraft defaults.']
+      notes=['AI is VectorCraft’s PDF-compatible AI export, not Adobe-native private editing data.','PNG and SVG are RGB only. CMYK applies to PDF, EPS, AI and JPEG.','White and dark-background JPEGs use a black background. Transparent formats retain transparency.','CMYK conversion uses '+(profile_name if profile_name else 'VectorCraft’s generic CMYK profile')+'. Confirm the printer’s required ICC profile before production.','Layout names come from approved artboards. New logo arrangements are not invented.','SVG text is outlined when selected; other formats use their VectorCraft defaults.']
       if colours: notes.append('Brand colour CMYK values are converted with the same profile as the print files. Pantone references are supplied by the designer, not calculated.')
       warnings=list(dict.fromkeys(warnings)); checks=list(dict.fromkeys(checks))
       (staging/'export-report.json').write_text(json.dumps({'files':report,'warnings':warnings,'checks':checks,'notes':notes,'colours':colours,'padding':cfg['padding'],'profile':profile_name},indent=2))
@@ -263,6 +392,7 @@ def collect(rows, batch, staging, warnings, report, keep=None):
         warnings.extend(row.get('result',{}).get('warnings',[]) if isinstance(row.get('result'),dict) else [])
     exports=[r['result'] for r in rows if r.get('command')=='document.export']
     if keep is not None: exports=[e for e,k in zip(exports,keep) if k]
+    if len(exports)!=len(batch): raise RuntimeError("The export engine returned an incomplete file set. Please rebuild the preview.")
     for task, exported in zip(batch,exports):
         file=staging/task['path']
         if not file.exists() and exported.get('files') and len(exported['files'])==1:
@@ -377,6 +507,7 @@ def deliver(cfg):
         notes=old.get('notes',[]);warnings=old.get('warnings',[]);checks=old.get('checks',[])
         previews={t['id']:t.get('thumbnail','') for t in chosen}
         hero=next((t.get('thumbnail') for t in chosen if t['variant']=='full-colour' and not t.get('group') and t.get('thumbnail')),None) or next((t.get('thumbnail') for t in chosen if t.get('thumbnail')),None)
+        hero_dark=any(t.get("thumbnail")==hero and t["variant"] in ("white","dark-background") for t in chosen)
         hero_png=Path(hero).read_bytes() if hero and Path(hero).is_file() else None
         if colours:
             folder=stage/'Brand-Colours'; folder.mkdir()
@@ -384,9 +515,9 @@ def deliver(cfg):
             (folder/(slug(brand)+'-colours.css')).write_text(brandfiles.css(brand,colours),encoding='utf-8')
             (folder/(slug(brand)+'-colours.json')).write_text(json.dumps([{k:c[k] for k in ('hex','rgb','cmyk','pantone')} for c in colours],indent=2),encoding='utf-8')
         if options.get('pdf',True):
-            (stage/(slug(brand)+'-Brand-Sheet.pdf')).write_bytes(brandfiles.brand_sheet(brand,hero_png,colours,usage,report,website_url()))
-        (stage/'export-report.json').write_text(json.dumps({'files':report,'warnings':warnings,'checks':checks,'notes':notes,'colours':colours},indent=2))
-        (stage/'START-HERE.html').write_text(guide(brand,report,warnings,notes,previews,website_url(),colours=colours,usage=usage,hero=hero_png,brand_files=slug(brand)),encoding='utf-8')
+            (stage/(slug(brand)+'-Brand-Sheet.pdf')).write_bytes(brandfiles.brand_sheet(brand,hero_png,colours,usage,report,website_url(),dark=hero_dark))
+        (stage/'export-report.json').write_text(json.dumps({'files':report,'warnings':warnings,'checks':checks,'notes':notes,'colours':colours,'padding':old.get('padding',0),'profile':old.get('profile','')},indent=2))
+        (stage/'START-HERE.html').write_text(guide(brand,report,warnings,notes,previews,website_url(),colours=colours,usage=usage,hero=hero_png,brand_files=slug(brand),pdf_sheet=options.get('pdf',True),hero_dark=hero_dark),encoding='utf-8')
         archive=temp/'package.zip'
         with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
             for f in stage.rglob('*'):
@@ -407,7 +538,7 @@ if __name__=='__main__':
     if sys.argv[1]=='inspect': out=inspect(sys.argv[2])
     else:
       cfg=json.load(open(sys.argv[2]))
-      fn={'plan':tasks,'export':package,'inspect-previews':inspect_with_previews,'prepare':prepare,'deliver':deliver,'reopen':reopen,'profiles':profiles}[sys.argv[1]]
+      fn={'plan':tasks,'export':package,'inspect-previews':inspect_with_previews,'prepare':prepare,'deliver':deliver,'reopen':reopen,'profiles':profiles,'preflight':preflight,'save-project':save_project,'open-project':open_project}[sys.argv[1]]
       out=fn(cfg)
     print(json.dumps(out))
   except Exception as e:
